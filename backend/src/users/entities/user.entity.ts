@@ -8,7 +8,7 @@ export class User {
     id: string;
 
     @Column({ type: 'text', unique: true })
-    email: string;
+    user: string;
 
     @Column({ type: 'text' })
     password: string;
@@ -24,6 +24,12 @@ export class User {
     
     @Column({ type: 'enum', enum: Object.values(UserRole), default: UserRole.USER })
     role: UserRole;
+
+    @Column({ 
+        type: 'int', 
+        default: 1 
+    })
+    tokenVersion: number;
 
     @UpdateDateColumn()
     updatedAt: Date;

@@ -14,12 +14,15 @@ export class AuthService {
     ) {}
 
     async login(authDto: AuthDto) {
-        const user = await this.userRepository.findOne({where: {email: authDto.email}});
-        if (!user) return 'Invalid User';
-        const passwordMatch = await comparePassword(authDto.password, user.password);
+        const users = await this.userRepository.findOne({where: {user: authDto.user}});
+        if (!users) return 'Invalid User';
+        const passwordMatch = await comparePassword(authDto.password, users.password);
         if (!passwordMatch) return 'Invalid User';
         const payload = {
-            id: user.id,
+            id: users.id,
+            user: users.user,
+            role: users.role,
+            tokenVersion: users.tokenVersion,
         };
         return {accesToken: this.jwtService.sign(payload) };
     }
