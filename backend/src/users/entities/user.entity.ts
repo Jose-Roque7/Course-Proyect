@@ -22,8 +22,11 @@ export class User {
     @Column({ type: 'text' })
     cellphone: string;
     
-    @Column({ type: 'enum', enum: Object.values(UserRole), default: UserRole.USER })
+    @Column({ type: 'enum', enum: Object.values(UserRole), default: UserRole.STUDENT })
     role: UserRole;
+
+    @Column({ type: 'boolean', default: true })
+    status: boolean;
 
     @Column({ 
         type: 'int', 

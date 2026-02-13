@@ -1,20 +1,19 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import {
-  User, // ← ESTABA FALTANDO ESTA IMPORTACIÓN
+  User,
   Lock,
   Eye,
   EyeOff,
   Loader2,
   LogIn,
   Trash2,
-  ChevronRight,
   Shield
 } from 'lucide-react';
 import { AuthService } from '../lib/axios/crud';
 import toast from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import { Toaster } from "react-hot-toast";
-
+import { useRouter } from 'next/navigation';
 
 // ========== Tipos estrictos ==========
 interface FormData {
@@ -33,6 +32,8 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [savedUser, setSavedUser] = useState<string>('');
+  const [logoLoaded, setLogoLoaded] = useState<boolean>(false);
+  const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     usuario: '',
     password: '',
@@ -43,6 +44,7 @@ const Login: React.FC = () => {
     password: ''
   });
 
+  // Cargar usuario recordado
   useEffect(() => {
     const storedUser = localStorage.getItem('rememberedUser');
     if (storedUser) {
@@ -53,6 +55,15 @@ const Login: React.FC = () => {
         rememberMe: true
       }));
     }
+  }, []);
+
+  // Precargar la imagen del logo
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/logo.png';
+    img.onload = () => {
+      setLogoLoaded(true);
+    };
   }, []);
 
   const formatUsuario = (value: string): string => {
@@ -123,14 +134,20 @@ const Login: React.FC = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    const data:any = await AuthService.login(formData.usuario, formData.password);
-    if(data === 'Invalid User') {
+    const data: any = await AuthService.login(formData.usuario, formData.password);
+    if (data === 'Invalid User') {
       toast.error('Usuario o contraseña incorrectos');
       setIsLoading(false);
       return;
     }
-    Cookies.set('accessToken', data.accesToken);
-    toast.success('Sesión iniciada exitosamente');
+    if (data === 'User Disabled') {
+      toast.error('Usuario deshabilitado');
+      setIsLoading(false);
+      return;
+    }
+    Cookies.set('accesToken', data.accesToken);    
+    setLogoLoaded(false);
+    router.push('/dashboard');
     if (formData.rememberMe) {
       localStorage.setItem('rememberedUser', formData.usuario);
       setSavedUser(formData.usuario);
@@ -154,55 +171,87 @@ const Login: React.FC = () => {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen font-sans antialiased flex items-center justify-center p-4 relative overflow-hidden selection:bg-gray-300 selection:text-gray-900">
-        {/* Fondo: imagen desde public con overlay oscuro */}
-        <div className="absolute inset-0 z-0">
+
+      {/* Loader que se muestra mientras carga el logo */}
+      {!logoLoaded && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+          <div className="relative">
+            {/* Animación de carga */}
+            <div className="absolute inset-0 rounded-full animate-ping">
+              <div className="w-24 h-24 rounded-full bg-white/20" />
+            </div>
+
+            {/* Logo con animación de aparición - AHORA NO ARRASTRABLE */}
+            <div className="relative animate-pulse">
+              <img
+                src="/logo.png"
+                alt="Cargando..."
+                className="w-24 h-24 object-contain opacity-80 select-none pointer-events-none"
+                draggable="false"
+                onDragStart={(e) => e.preventDefault()}
+              />
+            </div>
+
+            {/* Texto de carga con animación */}
+            <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+              <p className="text-white/80 text-sm font-light tracking-wider animate-pulse select-none">
+                Cargando Instituto Bíblico...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contenido principal - solo visible cuando el logo ha cargado */}
+      <div className={`min-h-screen font-sans antialiased flex items-center justify-center p-4 relative overflow-hidden selection:bg-gray-300 selection:text-gray-900 transition-opacity duration-700 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Fondo: imagen desde public con overlay oscuro - AHORA NO ARRASTRABLE */}
+        <div className="absolute inset-0 z-0 select-none pointer-events-none touch-none">
           <div
-            className="absolute inset-0 bg-cover bg-center"
+            className="absolute inset-0 bg-cover bg-center pointer-events-none select-none"
             style={{
               backgroundImage: "url('/fondo-instituto.jpg')",
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/70 to-black/80" />
-          <div className="absolute inset-0 bg-noise opacity-30 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/70 to-black/80 select-none" />
+          <div className="absolute inset-0 bg-noise opacity-30 mix-blend-overlay select-none" />
         </div>
-
         {/* Contenedor principal */}
         <div className="w-full max-w-sm relative z-10">
-          {/* Cabecera institucional - con logo desde public */}
+          {/* Cabecera institucional - con logo desde public - AHORA NO ARRASTRABLE */}
           <div className="text-center mb-6">
             <div className="relative inline-flex">
-              <div className="absolute inset-0  rounded-full" />
+              <div className="absolute inset-0 rounded-full" />
               <div className="relative inline-flex items-center justify-center w-34 h-34 rounded-2xl transform transition-all duration-300 hover:scale-110 p-3">
                 <img
                   src="/logo.png"
                   alt="Instituto Biblico Verbo Divino"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain select-none"
+                  draggable="false"
+                  onDragStart={(e) => e.preventDefault()}
                 />
               </div>
             </div>
-            <h1 className="text-2xl font-light text-white mb-1 tracking-tight drop-shadow-lg">
+            <h1 className="text-2xl font-light text-white mb-1 tracking-tight drop-shadow-lg select-none">
               Instituto Biblico Verbo Divino
             </h1>
-            <p className="text-sm text-gray-200 font-medium flex items-center justify-center gap-1.5 drop-shadow-lg">
+            <p className="text-sm text-gray-200 font-medium flex items-center justify-center gap-1.5 drop-shadow-lg select-none">
               <Shield className="w-4 h-4 text-gray-300" />
               Portal de Acceso Seguro
             </p>
           </div>
-
           {/* Tarjeta de acceso */}
           <div className="relative">
             <div className="absolute -inset-1 bg-gradient-to-r from-gray-400/20 via-white/20 to-gray-400/20 rounded-3xl blur-xl opacity-70" />
-            
+
             <div className="relative bg-white/90 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-black/30 border border-white/50 p-6 transition-all duration-500 hover:bg-white/95 hover:shadow-3xl hover:border-white/60">
-              
+
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-gradient-to-r from-gray-300 via-gray-500 to-gray-300 rounded-full" />
-              
+
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Campo Usuario */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 select-none">
                       <span className="w-1.5 h-1.5 bg-gray-600 rounded-full shadow-sm" />
                       Usuario
                     </label>
@@ -229,10 +278,9 @@ const Login: React.FC = () => {
                       disabled={isLoading}
                       className={`
                         w-full pl-11 pr-4 py-3 text-gray-800 text-sm
-                        border-2 ${
-                          errors.usuario
-                            ? 'border-gray-400 bg-white focus:border-gray-600 focus:ring-gray-400/30'
-                            : 'border-gray-200/80 bg-white focus:border-gray-700 focus:ring-gray-400/20'
+                        border-2 ${errors.usuario
+                          ? 'border-gray-400 bg-white focus:border-gray-600 focus:ring-gray-400/30'
+                          : 'border-gray-200/80 bg-white focus:border-gray-700 focus:ring-gray-400/20'
                         }
                         rounded-xl focus:outline-none focus:ring-4 transition-all duration-200
                         placeholder:text-gray-400 placeholder:text-sm placeholder:font-light
@@ -247,7 +295,7 @@ const Login: React.FC = () => {
                   {errors.usuario && (
                     <p
                       id="usuario-error"
-                      className="text-xs text-gray-700 font-medium flex items-center gap-1.5 pl-1"
+                      className="text-xs text-gray-700 font-medium flex items-center gap-1.5 pl-1 select-none"
                     >
                       <span className="inline-block w-1.5 h-1.5 bg-gray-700 rounded-full animate-pulse" />
                       {errors.usuario}
@@ -257,7 +305,7 @@ const Login: React.FC = () => {
 
                 {/* Campo Contraseña */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 select-none">
                     <span className="w-1.5 h-1.5 bg-gray-600 rounded-full shadow-sm" />
                     Contraseña
                   </label>
@@ -273,10 +321,9 @@ const Login: React.FC = () => {
                       disabled={isLoading}
                       className={`
                         w-full pl-11 pr-11 py-3 text-gray-800 text-sm
-                        border-2 ${
-                          errors.password
-                            ? 'border-gray-400 bg-white focus:border-gray-600 focus:ring-gray-400/30'
-                            : 'border-gray-200/80 bg-white focus:border-gray-700 focus:ring-gray-400/20'
+                        border-2 ${errors.password
+                          ? 'border-gray-400 bg-white focus:border-gray-600 focus:ring-gray-400/30'
+                          : 'border-gray-200/80 bg-white focus:border-gray-700 focus:ring-gray-400/20'
                         }
                         rounded-xl focus:outline-none focus:ring-4 transition-all duration-200
                         placeholder:text-gray-400 placeholder:text-sm placeholder:font-light
@@ -303,7 +350,7 @@ const Login: React.FC = () => {
                   {errors.password && (
                     <p
                       id="password-error"
-                      className="text-xs text-gray-700 font-medium flex items-center gap-1.5 pl-1"
+                      className="text-xs text-gray-700 font-medium flex items-center gap-1.5 pl-1 select-none"
                     >
                       <span className="inline-block w-1.5 h-1.5 bg-gray-700 rounded-full animate-pulse" />
                       {errors.password}
@@ -311,42 +358,41 @@ const Login: React.FC = () => {
                   )}
                 </div>
 
-                  <div className="flex items-center gap-2 cursor-pointer group">
+                <div className="flex items-center gap-2 cursor-pointer group">
                   {/* Checkbox personalizado */}
                   <div className="relative flex items-center justify-center">
-                      <input
+                    <input
                       type="checkbox"
                       name="rememberMe"
                       checked={formData.rememberMe}
                       onChange={handleInputChange}
-                      className="sr-only" // Oculta el checkbox nativo pero mantiene su funcionalidad
-                      />
-                      <div
+                      className="sr-only"
+                    />
+                    <div
                       className={`
-                          w-5 h-5 border-2 rounded-md 
-                          transition-all duration-200 ease-in-out
-                          flex items-center justify-center
-                          ${
-                          formData.rememberMe
-                              ? 'bg-gray-800 border-gray-800 hover:bg-gray-700 hover:border-gray-700'
-                              : 'bg-white border-gray-300 hover:border-gray-500'
-                          }
-                          ${!formData.rememberMe && 'group-hover:border-gray-500'}
-                          shadow-sm group-hover:shadow
+                        w-5 h-5 border-2 rounded-md 
+                        transition-all duration-200 ease-in-out
+                        flex items-center justify-center
+                        ${formData.rememberMe
+                          ? 'bg-gray-800 border-gray-800 hover:bg-gray-700 hover:border-gray-700'
+                          : 'bg-white border-gray-300 hover:border-gray-500'
+                        }
+                        ${!formData.rememberMe && 'group-hover:border-gray-500'}
+                        shadow-sm group-hover:shadow
                       `}
                       onClick={() => {
-                          const event = {
+                        const event = {
                           target: {
-                              name: 'rememberMe',
-                              type: 'checkbox',
-                              checked: !formData.rememberMe
+                            name: 'rememberMe',
+                            type: 'checkbox',
+                            checked: !formData.rememberMe
                           }
-                          } as ChangeEvent<HTMLInputElement>;
-                          handleInputChange(event);
+                        } as ChangeEvent<HTMLInputElement>;
+                        handleInputChange(event);
                       }}
-                      >
+                    >
                       {formData.rememberMe && (
-                          <svg
+                        <svg
                           className="w-3.5 h-3.5 text-white animate-check"
                           viewBox="0 0 24 24"
                           fill="none"
@@ -354,16 +400,16 @@ const Login: React.FC = () => {
                           strokeWidth="3"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          >
+                        >
                           <polyline points="20 6 9 17 4 12" />
-                          </svg>
+                        </svg>
                       )}
-                      </div>
+                    </div>
                   </div>
                   <span className="text-xs text-gray-600 group-hover:text-gray-900 transition-colors font-medium select-none">
-                      Recordar mi usuario
+                    Recordar mi usuario
                   </span>
-                  </div>
+                </div>
 
                 <button
                   type="submit"
@@ -389,7 +435,7 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-3 drop-shadow-lg">
+          <p className="text-center text-xs text-gray-400 mt-3 drop-shadow-lg select-none">
             © 2026 Instituto Bíblico Verbo Divino
           </p>
         </div>
@@ -398,6 +444,15 @@ const Login: React.FC = () => {
           .bg-noise {
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
             background-repeat: repeat;
+          }
+          
+          img {
+            user-drag: none;
+            -webkit-user-drag: none;
+            user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
           }
         `}</style>
       </div>

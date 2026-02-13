@@ -2,7 +2,8 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@n
 import { AuthService } from './auth.service';
 import { AuthDto} from './dto/auth.dto';
 import { ApiKeyGuard } from 'src/common/guards/api-key.guard';
-import { ApiSecurity } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiSecurity } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
@@ -13,6 +14,13 @@ export class AuthController {
   @Post('login')
   login(@Body() authDto: AuthDto) {
     return this.authService.login(authDto);
+  }
+
+  @ApiBearerAuth('jwt')
+  @UseGuards(AuthGuard('jwt'))
+  @Get('validate')
+  validate() {
+    return 'Valid Token';
   }
 
 }

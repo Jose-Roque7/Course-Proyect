@@ -16,6 +16,7 @@ export class AuthService {
     async login(authDto: AuthDto) {
         const users = await this.userRepository.findOne({where: {user: authDto.user}});
         if (!users) return 'Invalid User';
+        if (users.status === false) return 'User Disabled';
         const passwordMatch = await comparePassword(authDto.password, users.password);
         if (!passwordMatch) return 'Invalid User';
         const payload = {
